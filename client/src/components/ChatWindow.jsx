@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from 'react'
 import axios from 'axios'; 
 import { AppContext } from '../AppContext';
-import {  faPaperclip, faPlay, faTrash } from '@fortawesome/free-solid-svg-icons';
+import {  faPaperclip, faPen, faPlay, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { messageEndPoint, uploadEndPoint } from '../utlis/APIRoutes';
 import JSencrypt from 'jsencrypt'; 
@@ -17,9 +17,11 @@ const newSocket = io('http://localhost:5000');
 export default function ChatWindow() {
   const [file, setFile] = useState(''); 
   const [message, setMessage] = useState(''); 
+  const [newMessage, setNewMessage] = useState(''); 
   const [messages, setMessages] = useState([]); 
   const [newFileName, setNewFileName] = useState(''); 
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isModalVisible2, setIsModalVisible2] = useState(false);
 
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 
@@ -258,6 +260,31 @@ export default function ChatWindow() {
     }
   };
 
+  const handleUpdateMessage = async (index, messageID) => {
+    if(!messageID ||!newMessage || newMessage.length === 0){
+      return ; 
+    }
+ 
+    const response = await axios.put('http://localhost:8080/message', {
+      selectedUser: conversationId,
+      username: username,
+      messageID: messageID,
+      newMessage: newMessage
+    })
+
+    console.log(response);
+
+    if(response.status === 200){
+      socket.emit('updateUserUI'); 
+      getMessage(); 
+    }
+  }
+
+  const handleModals = (message) => {
+    setNewMessage(message)
+    setIsModalVisible2(!isModalVisible2);
+  }
+
   return (
     <>
     <ToastContainer />
@@ -268,7 +295,7 @@ export default function ChatWindow() {
           const isValidDate = !isNaN(messageDate);
           const messageID = message._id; 
           return (
-            <div key={index} className='mb-4 position-relative'>
+            <div key={index} className={`mb-4 position-relative ${message.sender === username ? 'bg-danger' : ''}`} >
               <strong className='me-1'>
                 {(message.sender === username ? 'You' : message.sender) }:
                 <span>
@@ -287,10 +314,38 @@ export default function ChatWindow() {
               <p style={{wordBreak: 'break-word', width: '95%'}}>
                 {message.message}
               </p>
-              <span className='d-flex flex-column position-absolute top-0 end-0'>
+              <span className='d-flex position-absolute top-0 end-0'>
                   <button className='btn' onClick={() => handleDeleteMessage(index, messageID)}> 
                     <FontAwesomeIcon icon={faTrash} />
                   </button>
+                  <button className='btn' onClick={() => handleModals(message.message)}> 
+                    <FontAwesomeIcon icon={faPen} />
+                  </button>
+                  <Modal show={isModalVisible2} onHide={handleModals}>
+                    <Modal.Header closeButton>
+                      <Modal.Title>Change message</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                    <form onSubmit={(e) => {
+                      e.preventDefault(); 
+                      handleUpdateMessage(index, messageID);
+                      handleModals();
+                    }}>
+                        <input 
+                          type="text" 
+                          className="form-control p-2" 
+                          value={newMessage}
+                          onChange={e => setNewMessage(e.target.value)}
+                        />
+                      </form>
+                      <div className='w-100 d-flex justify-content-center modal-footer'>
+                        <button type="submit" className='btn w-100 ' onClick={() => {
+                          handleUpdateMessage(index, messageID)
+                          handleModals();
+                        }}>Submit</button>
+                      </div>
+                    </Modal.Body>
+                  </Modal>
               </span>
             </div>
           );
