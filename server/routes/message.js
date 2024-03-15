@@ -5,6 +5,6 @@ const messageController = require('../controllers/messageController');
 
 router.get('/', messageController.getAllMessages); 
 router.post('/', messageController.deleteMessage); 
-
+router.put('/', messageController.updateMessage); 
 
 module.exports = router;
